@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quiz Interactivo de Excel - Torneo Escolar</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts & Font Awesome Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <!-- Canvas Confetti CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"Space Grotesk"', 'monospace']
+          },
+          colors: {
+            excelGreen: '#107c41',
+            excelHeader: '#7030a0'
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .option-btn {
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .option-btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px -4px rgba(16, 124, 65, 0.15);
+    }
+    .correct-choice {
+      background-color: #ecfdf5 !important;
+      border-color: #059669 !important;
+      color: #064e3b !important;
+      box-shadow: 0 0 0 2px rgba(5, 150, 105, 0.35) !important;
+    }
+    .wrong-choice {
+      background-color: #fef2f2 !important;
+      border-color: #dc2626 !important;
+      color: #7f1d1d !important;
+      box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.25) !important;
+    }
+    @keyframes popIn {
+      0% { opacity: 0; transform: scale(0.96); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+    .animate-pop {
+      animation: popIn 0.25s ease-out forwards;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen flex flex-col items-center justify-center p-3 sm:p-6 select-none">
+
+  <!-- Main Card Container -->
+  <main class="w-full max-w-2xl bg-white rounded-3xl shadow-xl border border-slate-200/90 overflow-hidden relative">
+    
+    <!-- Top Progress Bar (Active during quiz) -->
+    <div id="progress-wrapper" class="w-full bg-slate-100 h-2.5 overflow-hidden hidden">
+      <div id="progress-bar" class="bg-gradient-to-r from-emerald-600 via-teal-500 to-purple-600 h-full w-0 transition-all duration-300 ease-out"></div>
+    </div>
+
+    <!-- Header Section -->
+    <header class="px-6 py-4 bg-gradient-to-r from-slate-50 via-white to-purple-50/40 border-b border-slate-100 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-lg shadow-sm border border-emerald-200">
+          <i class="fa-solid fa-file-excel"></i>
+        </div>
+        <div>
+          <h1 class="text-base sm:text-lg font-bold text-slate-900 leading-tight">Torneo Escolar: Fórmulas y Modelos</h1>
+          <p class="text-xs font-semibold text-slate-400">Informática 3° de Secundaria • Caso Práctico en Excel</p>
+        </div>
+      </div>
+      
+      <!-- Live Score Badge (Shown during Quiz) -->
+      <div id="header-score-badge" class="hidden items-center gap-2 bg-slate-100 border border-slate-200 px-3.5 py-1.5 rounded-full">
+        <i class="fa-solid fa-star text-amber-500 text-sm"></i>
+        <span class="text-xs font-bold text-slate-700">Aciertos: <strong id="score-counter" class="text-emerald-700 font-mono text-sm">0</strong></span>
+      </div>
+    </header>
+
+    <!-- 1. PORTADA DE BIENVENIDA -->
+    <section id="welcome-screen" class="p-8 sm:p-10 text-center animate-pop">
+      <div class="w-20 h-20 mx-auto rounded-3xl bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center text-4xl mb-5 shadow-sm">
+        <i class="fa-solid fa-trophy"></i>
+      </div>
+
+      <span class="inline-block px-3.5 py-1 bg-purple-100 text-purple-700 border border-purple-200 text-xs font-bold rounded-full uppercase tracking-wider mb-3">
+        3° Año • Evaluación Práctica
+      </span>
+      <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 mb-2">¡Desafío Financiero del Torneo!</h2>
+      <p class="text-sm text-slate-600 max-w-md mx-auto mb-6 leading-relaxed">
+        Pon a prueba tu conocimiento sobre las celdas, fórmulas, la herramienta <strong>Buscar Objetivo</strong> y la <strong>Matriz Visual</strong> trabajadas en clase.
+      </p>
+
+      <!-- Formulario de Identificación -->
+      <form id="start-form" class="max-w-md mx-auto text-left mb-6" onsubmit="event.preventDefault();">
+        <label for="student-name-input" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+          Nombre completo y grupo <span class="text-rose-500">*</span>
+        </label>
+        <div class="relative">
+          <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+            <i class="fa-solid fa-user-graduate"></i>
+          </span>
+          <input 
+            type="text" 
+            id="student-name-input" 
+            placeholder="Ej: Mateo Fernández - 3° A" 
+            maxlength="45"
+            class="w-full pl-10 pr-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all font-medium text-slate-800 placeholder:text-slate-400"
+            required
+          >
+        </div>
+        <p id="name-error" class="hidden text-xs text-rose-500 font-semibold mt-1.5 flex items-center gap-1">
+          <i class="fa-solid fa-circle-exclamation"></i> Por favor escribe tu nombre y grupo para comenzar.
+        </p>
+
+        <!-- Indicaciones rápidas -->
+        <div class="mt-5 p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 space-y-2">
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-circle-check text-emerald-600"></i>
+            <span><strong>10 preguntas interactivas</strong> con respuestas en orden aleatorio</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-lightbulb text-amber-500"></i>
+            <span>Retroalimentación didáctica con justificación de cada celda</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-award text-purple-600"></i>
+            <span>Reporte final de calificación para tu profesor</span>
+          </div>
+        </div>
+
+        <!-- Botón Comenzar -->
+        <button 
+          type="button" 
+          id="start-btn" 
+          class="w-full mt-6 py-3.5 px-6 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-sm sm:text-base rounded-xl shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2 transition-all cursor-pointer"
+        >
+          <span>Comenzar Quiz</span>
+          <i class="fa-solid fa-arrow-right text-xs"></i>
+        </button>
+      </form>
+    </section>
+
+    <!-- 2. PANTALLA PRINCIPAL DEL QUIZ -->
+    <section id="quiz-screen" class="hidden p-6 sm:p-8">
+      <!-- Metadatos de la pregunta -->
+      <div class="flex justify-between items-center mb-4">
+        <span id="question-tracker" class="text-xs font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+          Pregunta 1 de 10
+        </span>
+        <span class="text-xs font-semibold text-slate-500 flex items-center gap-1.5 truncate max-w-[220px]">
+          <i class="fa-regular fa-user text-purple-600"></i> <span id="student-name-pill">Estudiante</span>
+        </span>
+      </div>
+
+      <!-- Enunciado -->
+      <h2 id="question-title" class="text-lg sm:text-xl font-bold text-slate-900 leading-snug min-h-[56px] flex items-center mb-6">
+        Cargando pregunta...
+      </h2>
+
+      <!-- Opciones barajadas dinámicamente -->
+      <div id="options-container" class="grid grid-cols-1 gap-3 mb-6"></div>
+
+      <!-- Tarjeta de retroalimentación didáctica -->
+      <div id="feedback-card" class="hidden rounded-2xl p-4 border transition-all mb-4 animate-pop">
+        <div class="flex items-start gap-3">
+          <div id="feedback-icon" class="text-lg mt-0.5"></div>
+          <div>
+            <h3 id="feedback-title" class="text-sm font-bold leading-tight mb-1"></h3>
+            <p id="feedback-desc" class="text-xs sm:text-sm text-slate-600 leading-relaxed"></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Botón siguiente -->
+      <div class="flex justify-end pt-2 border-t border-slate-100">
+        <button id="next-btn" class="hidden items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-sm rounded-xl shadow-lg shadow-emerald-600/20 transition-all cursor-pointer">
+          <span>Siguiente</span>
+          <i class="fa-solid fa-arrow-right text-xs"></i>
+        </button>
+      </div>
+    </section>
+
+    <!-- 3. PANTALLA DE RESULTADOS FINALES -->
+    <section id="result-screen" class="hidden p-8 sm:p-10 text-center animate-pop">
+      <div id="result-badge-container" class="w-20 h-20 mx-auto rounded-3xl bg-amber-100 text-amber-500 flex items-center justify-center text-4xl mb-5 shadow-inner">
+        <i class="fa-solid fa-trophy"></i>
+      </div>
+
+      <h2 id="result-title" class="text-2xl sm:text-3xl font-extrabold text-slate-900 mb-1">¡Cuestionario Completado!</h2>
+      <p id="result-student-name" class="text-sm font-bold text-purple-700 mb-2">Alumno: -</p>
+      <p class="text-sm text-slate-500 max-w-md mx-auto mb-6">
+        Has finalizado el análisis financiero del Torneo Escolar de 3° de Secundaria.
+      </p>
+
+      <!-- Resumen numérico -->
+      <div class="bg-slate-50 border border-slate-200 rounded-2xl p-6 max-w-sm mx-auto mb-6 flex items-center justify-around">
+        <div>
+          <span class="block text-xs font-bold uppercase text-slate-400 mb-1">Aciertos</span>
+          <span id="final-correct" class="font-mono text-3xl font-bold text-emerald-600">0</span>
+          <span class="text-slate-400 text-sm">/ 10</span>
+        </div>
+        <div class="h-10 w-px bg-slate-200"></div>
+        <div>
+          <span class="block text-xs font-bold uppercase text-slate-400 mb-1">Calificación</span>
+          <span id="final-percentage" class="font-mono text-3xl font-bold text-purple-700">0/10</span>
+        </div>
+      </div>
+
+      <!-- Mensaje personalizado -->
+      <div id="motivational-box" class="p-4 rounded-xl text-sm font-semibold max-w-md mx-auto mb-8"></div>
+
+      <!-- Reiniciar -->
+      <div class="flex justify-center gap-4">
+        <button id="restart-btn" class="flex items-center gap-2 px-6 py-3.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm rounded-xl shadow-md transition-all cursor-pointer">
+          <i class="fa-solid fa-rotate-right text-xs"></i>
+          <span>Nuevo Intento</span>
+        </button>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    // Las 10 preguntas específicas con las opciones ya repartidas intencionalmente en posiciones aleatorias
+    const rawQuestions = [
+      {
+        question: "1. En la celda C7, ¿cuál es la fórmula correcta para calcular los Ingresos Totales del torneo?",
+        options: [
+          "=SUMA(C2:C3)",
+          "=C2+C3",
+          "=C2*C3",
+          "=C7*40"
+        ],
+        correctAnswer: "=C2*C3",
+        explanation: "Multiplicamos el costo de inscripción (C2) por la cantidad de participantes esperados (C3)."
+      },
+      {
+        question: "2. ¿Qué fórmula de Excel se ingresó en la celda C8 para obtener los Gastos Totales?",
+        options: [
+          "=SUMA(C4:C6)",
+          "=C4*C5*C6",
+          "=PROMEDIO(C4:C6)",
+          "=SUMAR.SI(C4:C6)"
+        ],
+        correctAnswer: "=SUMA(C4:C6)",
+        explanation: "Se suman los 3 costos fijos del torneo: Premio 1 lugar (C4), renta de equipo (C5) y publicidad (C6)."
+      },
+      {
+        question: "3. ¿Por qué el premio ($1,000), la renta de equipo ($500) y la publicidad ($150) son clasificados como 'Costos Fijos'?",
+        options: [
+          "Porque su valor cambia según la cantidad de alumnos que se inscriban",
+          "Porque no se pagan si el torneo no genera suficiente dinero",
+          "Porque son cobros que se le hacen a los participantes",
+          "Porque se deben pagar obligatoriamente sin importar cuántos jugadores asistan"
+        ],
+        correctAnswer: "Porque se deben pagar obligatoriamente sin importar cuántos jugadores asistan",
+        explanation: "Los costos fijos no varían con el volumen de inscriptos; el premio y los alquileres deben cubrirse sí o sí."
+      },
+      {
+        question: "4. En el Escenario Base ($50 de inscripción y 40 participantes), ¿cuál es la Ganancia Neta y su fórmula en C9?",
+        options: [
+          "$2,000 con la fórmula =SUMA(C7:C8)",
+          "$350 con la fórmula =C7-C8",
+          "$1,650 con la fórmula =C8-C7",
+          "$350 con la fórmula =C2-C8"
+        ],
+        correctAnswer: "$350 con la fórmula =C7-C8",
+        explanation: "Ganancia Neta = Ingresos Totales ($2,000) menos Gastos Totales ($1,650) = $350."
+      },
+      {
+        question: "5. Al configurar la herramienta 'Buscar Objetivo' para alcanzar la meta de $8,500 cobrando $50, ¿qué celda se seleccionó como 'Cambiando la celda'?",
+        options: [
+          "C2 (Costo de inscripción)",
+          "C9 (Ganancia Neta)",
+          "C7 (Ingresos Totales)",
+          "C3 (Participantes Estimados)"
+        ],
+        correctAnswer: "C3 (Participantes Estimados)",
+        explanation: "Le pedimos a Excel que calculara cuántos participantes debían anotarse manteniendo la cuota en $50."
+      },
+      {
+        question: "6. ¿Cuántos participantes calculó automáticamente Buscar Objetivo para lograr la meta exacta de $8,500 de ganancia neta?",
+        options: [
+          "120 participantes",
+          "203 participantes",
+          "40 participantes",
+          "170 participantes"
+        ],
+        correctAnswer: "203 participantes",
+        explanation: "Para ganar $8,500 pagando $1,650 de gastos fijos: ($8,500 + $1,650) / $50 = 203 alumnos."
+      },
+      {
+        question: "7. En la pestaña 'Resumen del escenario', ¿qué balance arrojó el Escenario Adverso ($50 de inscripción y 15 alumnos)?",
+        options: [
+          "Una ganancia de $350",
+          "Un saldo neutro de $0",
+          "Una pérdida o saldo negativo de -$900",
+          "Una pérdida de -$1,650"
+        ],
+        correctAnswer: "Una pérdida o saldo negativo de -$900",
+        explanation: "15 alumnos a $50 generan solo $750 de ingresos. Al restar los $1,650 de gastos fijos queda un déficit de -$900."
+      },
+      {
+        question: "8. ¿Cuáles fueron las dos 'Celdas cambiantes' elegidas en el Administrador de Escenarios?",
+        options: [
+          "Costo de inscripción (C2) y Participantes estimados (C3)",
+          "Premio 1 lugar (C4) y Ganancia (C9)",
+          "Ingresos Totales (C7) y Gastos Totales (C8)",
+          "Renta de equipo (C5) y Publicidad (C6)"
+        ],
+        correctAnswer: "Costo de inscripción (C2) y Participantes estimados (C3)",
+        explanation: "El informe de escenarios comparó qué pasaba al combinar distintos precios de entrada y concurrencias."
+      },
+      {
+        question: "9. En la pestaña 'Matriz Visual' (Tabla de Datos), ¿qué fórmula indispensable se colocó en la celda superior izquierda E2?",
+        options: [
+          "=C7",
+          "=SUMA(C4:C6)",
+          "=C9",
+          "=BUSCARV(C9)"
+        ],
+        correctAnswer: "=C9",
+        explanation: "La tabla de datos de 2 variables requiere vincular la celda de resultado de ganancia neta (=C9) para simular todos los cruces."
+      },
+      {
+        question: "10. Según la Matriz Visual, ¿cuál de las siguientes combinaciones permite superar con éxito la meta de $8,500 de ganancia neta?",
+        options: [
+          "40 participantes a $90",
+          "100 participantes a $110 ($9,350 de ganancia)",
+          "120 participantes a $50",
+          "80 participantes a $70"
+        ],
+        correctAnswer: "100 participantes a $110 ($9,350 de ganancia)",
+        explanation: "100 participantes a $110 generan $11,000 en ingresos; restando $1,650 de gastos da $9,350, superando los $8,500."
+      }
+    ];
+
+    // Algoritmo Fisher-Yates Shuffle para barajar arreglos
+    function shuffleArray(arr) {
+      const copy = [...arr];
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    }
+
+    // Preparar el banco de preguntas con opciones barajadas dinámicamente
+    function buildQuizQuestions() {
+      return rawQuestions.map(item => ({
+        question: item.question,
+        options: shuffleArray(item.options),
+        correctAnswer: item.correctAnswer,
+        explanation: item.explanation
+      }));
+    }
+
+    let activeQuestions = [];
+    let currentQuestionIndex = 0;
+    let score = 0;
+    let answered = false;
+    let studentName = "";
+
+    // Elementos del DOM
+    const welcomeScreen = document.getElementById('welcome-screen');
+    const studentNameInput = document.getElementById('student-name-input');
+    const startBtn = document.getElementById('start-btn');
+    const nameError = document.getElementById('name-error');
+    const progressWrapper = document.getElementById('progress-wrapper');
+    const progressBar = document.getElementById('progress-bar');
+    const headerScoreBadge = document.getElementById('header-score-badge');
+    const scoreCounter = document.getElementById('score-counter');
+    const studentNamePill = document.getElementById('student-name-pill');
+
+    const quizScreen = document.getElementById('quiz-screen');
+    const questionTracker = document.getElementById('question-tracker');
+    const questionTitle = document.getElementById('question-title');
+    const optionsContainer = document.getElementById('options-container');
+    const feedbackCard = document.getElementById('feedback-card');
+    const feedbackIcon = document.getElementById('feedback-icon');
+    const feedbackTitle = document.getElementById('feedback-title');
+    const feedbackDesc = document.getElementById('feedback-desc');
+    const nextBtn = document.getElementById('next-btn');
+
+    const resultScreen = document.getElementById('result-screen');
+    const resultStudentName = document.getElementById('result-student-name');
+    const finalCorrect = document.getElementById('final-correct');
+    const finalPercentage = document.getElementById('final-percentage');
+    const motivationalBox = document.getElementById('motivational-box');
+    const restartBtn = document.getElementById('restart-btn');
+
+    function launchConfetti(type) {
+      if (typeof confetti !== 'function') return;
+      if (type === 'small') {
+        confetti({
+          particleCount: 25,
+          spread: 60,
+          origin: { y: 0.8 }
+        });
+      } else {
+        confetti({
+          particleCount: 100,
+          spread: 80,
+          origin: { y: 0.6 }
+        });
+      }
+    }
+
+    function startQuiz() {
+      const name = studentNameInput.value.trim();
+      if (!name) {
+        nameError.classList.remove('hidden');
+        studentNameInput.focus();
+        return;
+      }
+
+      nameError.classList.add('hidden');
+      studentName = name;
+      studentNamePill.textContent = studentName;
+
+      // Ocultar portada y mostrar quiz
+      welcomeScreen.classList.add('hidden');
+      progressWrapper.classList.remove('hidden');
+      headerScoreBadge.classList.remove('hidden');
+      headerScoreBadge.classList.add('flex');
+      quizScreen.classList.remove('hidden');
+
+      // Inicializar preguntas aleatorias
+      activeQuestions = buildQuizQuestions();
+      score = 0;
+      currentQuestionIndex = 0;
+      scoreCounter.textContent = '0';
+      loadQuestion();
+    }
+
+    function loadQuestion() {
+      answered = false;
+      const q = activeQuestions[currentQuestionIndex];
+
+      // Actualizar progreso y contador
+      questionTracker.textContent = `Pregunta ${currentQuestionIndex + 1} de ${activeQuestions.length}`;
+      const progressPercent = (currentQuestionIndex / activeQuestions.length) * 100;
+      progressBar.style.width = `${progressPercent}%`;
+
+      // Cargar enunciado
+      questionTitle.textContent = q.question;
+
+      // Ocultar feedback y botón siguiente
+      feedbackCard.className = 'hidden rounded-2xl p-4 border transition-all mb-4 animate-pop';
+      nextBtn.classList.add('hidden');
+      nextBtn.classList.remove('inline-flex');
+
+      // Renderizar opciones de respuesta barajadas
+      optionsContainer.innerHTML = '';
+      const letters = ['A', 'B', 'C', 'D'];
+
+      q.options.forEach((optText, index) => {
+        const btn = document.createElement('button');
+        btn.className = 'option-btn w-full p-4 text-left rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-between text-slate-800 font-semibold text-sm transition-all cursor-pointer';
+        btn.innerHTML = `
+          <div class="flex items-center gap-3">
+            <span class="w-7 h-7 rounded-lg bg-slate-100 text-slate-600 font-mono text-xs flex items-center justify-center font-bold">
+              ${letters[index]}
+            </span>
+            <span class="option-text">${optText}</span>
+          </div>
+          <span class="status-icon text-slate-300"><i class="fa-regular fa-circle"></i></span>
+        `;
+        btn.addEventListener('click', () => selectAnswer(optText, btn));
+        optionsContainer.appendChild(btn);
+      });
+    }
+
+    function selectAnswer(selectedText, clickedBtn) {
+      if (answered) return;
+      answered = true;
+
+      const q = activeQuestions[currentQuestionIndex];
+      const buttons = optionsContainer.querySelectorAll('button');
+
+      // Bloquear botones
+      buttons.forEach(btn => btn.disabled = true);
+
+      const isCorrect = (selectedText === q.correctAnswer);
+
+      if (isCorrect) {
+        score++;
+        scoreCounter.textContent = score;
+        clickedBtn.classList.add('correct-choice');
+        clickedBtn.querySelector('.status-icon').innerHTML = '<i class="fa-solid fa-circle-check text-emerald-600 text-base"></i>';
+        
+        feedbackCard.className = 'rounded-2xl p-4 border bg-emerald-50 border-emerald-200 text-emerald-900 mb-4 animate-pop block';
+        feedbackIcon.innerHTML = '<i class="fa-solid fa-circle-check text-emerald-600"></i>';
+        feedbackTitle.textContent = '¡Correcto!';
+        feedbackDesc.textContent = q.explanation;
+        launchConfetti('small');
+      } else {
+        clickedBtn.classList.add('wrong-choice');
+        clickedBtn.querySelector('.status-icon').innerHTML = '<i class="fa-solid fa-circle-xmark text-rose-500 text-base"></i>';
+
+        // Resaltar la respuesta que era correcta
+        buttons.forEach(btn => {
+          const text = btn.querySelector('.option-text').textContent;
+          if (text === q.correctAnswer) {
+            btn.classList.add('correct-choice');
+            btn.querySelector('.status-icon').innerHTML = '<i class="fa-solid fa-circle-check text-emerald-600 text-base"></i>';
+          }
+        });
+
+        feedbackCard.className = 'rounded-2xl p-4 border bg-rose-50 border-rose-200 text-rose-900 mb-4 animate-pop block';
+        feedbackIcon.innerHTML = '<i class="fa-solid fa-circle-xmark text-rose-500"></i>';
+        feedbackTitle.textContent = 'Incorrecto';
+        feedbackDesc.textContent = q.explanation;
+      }
+
+      nextBtn.classList.remove('hidden');
+      nextBtn.classList.add('inline-flex');
+    }
+
+    function handleNext() {
+      currentQuestionIndex++;
+      if (currentQuestionIndex < activeQuestions.length) {
+        loadQuestion();
+      } else {
+        showResults();
+      }
+    }
+
+    function showResults() {
+      progressBar.style.width = '100%';
+      quizScreen.classList.add('hidden');
+      resultScreen.classList.remove('hidden');
+
+      resultStudentName.textContent = `Estudiante: ${studentName}`;
+      finalCorrect.textContent = score;
+      finalPercentage.textContent = `${score}/10`;
+
+      if (score >= 9) {
+        motivationalBox.className = 'p-4 rounded-xl text-sm font-semibold max-w-md mx-auto mb-8 bg-emerald-50 text-emerald-900 border border-emerald-200';
+        motivationalBox.innerHTML = '<i class="fa-solid fa-medal text-emerald-600 mr-2"></i>¡Excelente trabajo! Dominas perfectamente las fórmulas, el despeje de Buscar Objetivo y el análisis de escenarios en Excel.';
+        launchConfetti('large');
+      } else if (score >= 6) {
+        motivationalBox.className = 'p-4 rounded-xl text-sm font-semibold max-w-md mx-auto mb-8 bg-blue-50 text-blue-900 border border-blue-200';
+        motivationalBox.innerHTML = '<i class="fa-solid fa-thumbs-up text-blue-600 mr-2"></i>¡Bien hecho! Tienes las bases de la planilla. Revisa con atención la Matriz Visual y Buscar Objetivo para asegurar un 10.';
+      } else {
+        motivationalBox.className = 'p-4 rounded-xl text-sm font-semibold max-w-md mx-auto mb-8 bg-amber-50 text-amber-900 border border-amber-200';
+        motivationalBox.innerHTML = '<i class="fa-solid fa-book-open text-amber-600 mr-2"></i>¡Ánimo! Dale una repasada a la tabla con las celdas C2 a C9 y vuelve a intentar el cuestionario.';
+      }
+    }
+
+    function restartQuiz() {
+      score = 0;
+      currentQuestionIndex = 0;
+      scoreCounter.textContent = '0';
+      resultScreen.classList.add('hidden');
+      progressWrapper.classList.add('hidden');
+      headerScoreBadge.classList.add('hidden');
+      headerScoreBadge.classList.remove('flex');
+      welcomeScreen.classList.remove('hidden');
+      studentNameInput.value = '';
+    }
+
+    startBtn.addEventListener('click', startQuiz);
+    studentNameInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        startQuiz();
+      }
+    });
+    nextBtn.addEventListener('click', handleNext);
+    restartBtn.addEventListener('click', restartQuiz);
+  </script>
+</body>
+</html>
